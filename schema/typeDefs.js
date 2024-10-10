@@ -6,7 +6,6 @@ export const typeDefs = gql`
     id: ID!
     name: String!
     email: String!
-    isAdmin: Boolean!
     notes: [Note]
   }
 
@@ -14,23 +13,29 @@ export const typeDefs = gql`
     id: ID!
     title: String!
     description: String!
+    userId: ID!
     user: User!
   }
-  type Auth {
-    message: String
-    token: String!
-  }
-
   type Query {
     getUser(id: ID!): User # Bir kullanıcıyı ID'sine göre getirir
     getNotes: [Note] # Tüm notları getirir
-    getUserNotes(userId: ID!): [Note]! # Belirli bir kullanıcının notlarını getirir
+  }
+
+  type Auth {
+    message: String!
+    user: User!
+  }
+  type Message {
+    message: String!
+  }
+
+  type Query {
+    getNotes: [Note]
   }
 
   type Mutation {
-    register(name: String!, email: String!, password: String!): Auth!
+    register(name: String!, email: String!, password: String!): Message!
     login(email: String!, password: String!): Auth!
-    createNote(title: String!, description: String!, userId: ID!): Note!
-    updateNote(id: ID!, title: String!, description: String!): Note!
+    createNote(title: String!, description: String!): Note!
   }
 `;

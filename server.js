@@ -1,35 +1,42 @@
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import express from "express";
+import http from "http";
 import cors from "cors";
 import { typeDefs } from "./schema/typeDefs.js";
 import { resolvers } from "./schema/resolvers.js";
 import connectDB from "./config/db.js";
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
-
+import cookieParser from "cookie-parser";
 // Utils
-import { createToken } from "./utils/createToken.js";
 
 dotenv.config(); // dotenv
 connectDB(); // connecting database
-
 const app = express();
+const httpServer = http.createServer(app);
+
+const corsOptions = {
+  origin: "http://localhost:5173", // Frontend'in çalıştığı URL
+  credentials: true, // Cookie'leri gönder
+};
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+  cors: corsOptions, // CORS ayarlarını buraya ekliyoruz
 });
-
 await server.start();
+app.use(cookieParser()); // Cookie-parser middleware ekle
 
 app.use(
   "/graphql",
-  cors(),
+  cors(corsOptions),
   express.json(),
   expressMiddleware(server, {
-    context: async ({ req }) => {
-      return createToken(req);
+    context: async ({ req, res }) => {
+      return { req, res };
     },
   })
 );

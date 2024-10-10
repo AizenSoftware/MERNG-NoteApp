@@ -1,20 +1,15 @@
 import jwt from "jsonwebtoken";
-export const createToken = (req) => {
-  const token = req.headers.authorization || "";
 
-  // Token yoksa boş kullanıcı dön
-  if (!token) {
-    return { user: null };
-  }
+export const createToken = (res, userId) => {
+  const token = jwt.sign({ user: userId }, process.env.SECRET_KEY, {
+    expiresIn: "30d",
+  });
+  res.cookie("jwt", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV !== "development",
+    sameSite: "strict",
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  });
 
-  let user = null;
-  try {
-    // Token'dan "Bearer " ifadesini kaldır
-    user = jwt.verify(token, process.env.SECRET_KEY);
-  } catch (err) {
-    console.error("Token error:", err);
-    return { user: null };
-  }
-  // Kullanıcıyı context'e ekle
-  return { user };
+  return token;
 };

@@ -5,15 +5,23 @@ import { createToken } from "../utils/createToken.js";
 import { auth } from "../utils/auth.js";
 export const resolvers = {
   Query: {
-    getNotes: async (_, __, { req }) => {
-      const user = auth(req);
-      let notes = await Note.find({ userId: user._userId });
-      return notes;
+    authUser: async (_, __, { req }) => {
+      const userId = await auth(req);
+      if (!userId) throw new Error("Auth user not found");
+      const user = await User.findById(userId);
+      if (!user) throw new Error("There is no user");
+      return user;
+    },
+    user: async (_, { userId }) => {
+      const user = await User.findById(userId);
+      if (!user) throw new Error("There is no user");
+
+      return user;
     },
   },
   Mutation: {
     // Register User
-    register: async (_, { name, email, password }, { res }) => {
+    register: async (_, { name, email, password }) => {
       if (!name || !email || !password) {
         throw new Error("Name, email, and password are required");
       }
@@ -30,7 +38,8 @@ export const resolvers = {
 
     // Login User
     login: async (_, { email, password }, { res }) => {
-      const user = await User.findOne({ email });
+      if (!email || !password) throw new Error("Please fill the all inputs");
+      const user = await User.findOne({ email: email.trim() });
       if (!user) throw new Error("User not found");
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) throw new Error("Invalid credentials");
@@ -39,32 +48,41 @@ export const resolvers = {
       return { message: "Login başarılı", user };
     },
 
-    createNote: async (_, { title, description }, { req }) => {
-      if (!title || !description) throw new Error("Please fill the all inputs");
-      const user = auth(req);
-      if (!user) throw new Error("Invalid authanticate");
+    logout: async (_, __, { res, req }) => {
+      if (!req.cookies.jwt) throw new Error("User already logout");
+      res.clearCookie("jwt", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // Yalnızca prod ortamında 'secure' olsun
+        sameSite: "lax",
+      });
+      return { message: "Logout is successfull" };
+    },
 
-      const noteUser = await User.findById(user.userId);
+    createNote: async (_, { title, description }, { req }) => {
+      const userId = await auth(req);
+      if (!title || !description) throw new Error("Please fill the all inputs");
+      if (!userId) throw new Error("Invalid authanticate");
+
+      const user = await User.findById(userId);
       const note = await Note.create({
-        userId: user,
+        userId,
         title,
         description,
-        user: noteUser,
+        user,
       });
       return note;
     },
   },
 
-  // Note: {
-  //   user: async (parent) => {
-  //     const userId = parent.userId;
-  //     try {
-  //       const user = await User.findById(userId);
-  //       return user;
-  //     } catch (err) {
-  //       console.error("Error getting user:", err);
-  //       throw new Error("Error getting user");
-  //     }
-  //   },
-  // },
+  User: {
+    notes: async (parent) => {
+      try {
+        const notes = await Note.find({ userId: parent.id });
+        return notes;
+      } catch (error) {
+        console.log("Error:", error);
+        throw new Error(error.message || "Interval Server Error");
+      }
+    },
+  },
 };

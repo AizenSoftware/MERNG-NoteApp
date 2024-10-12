@@ -6,7 +6,7 @@ export const typeDefs = gql`
     id: ID!
     name: String!
     email: String!
-    notes: [Note]
+    notes: [Note!]
   }
 
   type Note {
@@ -30,12 +30,14 @@ export const typeDefs = gql`
   }
 
   type Query {
-    getNotes: [Note]
+    authUser: User
+    user(userId: ID!): User
   }
 
   type Mutation {
     register(name: String!, email: String!, password: String!): Message!
     login(email: String!, password: String!): Auth!
+    logout: Message!
     createNote(title: String!, description: String!): Note!
   }
 `;
